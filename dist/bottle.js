@@ -1,10 +1,10 @@
 ;(function(undefined) {
     'use strict';
     /**
-     * BottleJS v1.5.0 - 2016-10-14
+     * BottleJS v1.5.0 - 2017-01-17
      * A powerful dependency injection micro container
      *
-     * Copyright (c) 2016 Stephen Young
+     * Copyright (c) 2017 Stephen Young
      * Licensed MIT
      */
     
@@ -308,6 +308,7 @@
         if (this.providerMap[fullname] && parts.length === 1 && !this.container[fullname + 'Provider']) {
             return console.error(fullname + ' provider already instantiated.');
         }
+        this.originalProviders[fullname] = Provider;
         this.providerMap[fullname] = true;
     
         name = parts.shift();
@@ -377,6 +378,25 @@
     
         Object.defineProperties(container, properties);
         return this;
+    };
+    
+    var removeProviderMap = function resetProvider(name) {
+        delete this.providerMap[name];
+        delete this.container[name];
+        delete this.container[name + 'Provider'];
+    };
+    
+    var resetProviders = function resetProviders() {
+        var providers = this.originalProviders;
+        Object.keys(providers).forEach(function(provider) {
+            var parts = provider.split('.');
+            if (parts.length > 1) {
+                removeProviderMap.call(this, parts[0]);
+                parts.forEach(removeProviderMap.bind(getNestedBottle.call(this, parts[0])));
+            }
+            removeProviderMap.call(this, provider);
+            this.provider(provider, providers[provider]);
+        }.bind(this));
     };
     
     /**
@@ -516,6 +536,7 @@
         this.middlewares = {};
         this.nested = {};
         this.providerMap = {};
+        this.originalProviders = {};
         this.deferred = [];
         this.container = {
             $register : register.bind(this),
@@ -536,6 +557,7 @@
         list : list,
         middleware : middleware,
         provider : provider,
+        resetProviders : resetProviders,
         register : register,
         resolve : resolve,
         service : service,
